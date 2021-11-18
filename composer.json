@@ -1,0 +1,29 @@
+{
+    "name": "mongooer/conrmq",
+    "description": "connection rmq",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Mongooer\\Conrmq\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Mongooer",
+            "email": "273311429@qq.com"
+        }
+    ],
+    "require": {
+        "php-amqplib/php-amqplib": "^3.1"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Mongooer\\Conrmq\\MongooerConrmqProvider"
+            ],
+            "aliases": {
+                "Debugbar": "Mongooer\\Conrmq\\Facades\\Mq"
+            }
+        }
+    }
+}
