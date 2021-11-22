@@ -8,6 +8,8 @@ interface MqConnectionInterface
 
     public function setQueue(string $queueName): self;
 
+    public function setRoutingKey(string $routingKey): self;
+
     public function publisherArray(array $messageArray);
 
     public function publisherString(string $messageBody);

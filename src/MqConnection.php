@@ -21,6 +21,10 @@ class MqConnection implements MqConnectionInterface
     protected $connection;
 
     protected $channel;
+    /**
+     * @var string
+     */
+    protected $routingKey = "";
 
     public function __construct(array $config)
     {
@@ -55,6 +59,12 @@ class MqConnection implements MqConnectionInterface
         return $this;
     }
 
+    public function setRoutingKey(string $routingKey): MqConnectionInterface
+    {
+        $this->routingKey = $routingKey;
+        return $this;
+    }
+
     public function setQueue(string $queueName): MqConnectionInterface
     {
         $this->channel->queue_declare($queueName, false, true, false, false);
@@ -83,11 +93,11 @@ class MqConnection implements MqConnectionInterface
             throw new \RuntimeException("exchange not defined");
         }
         if ($this->reBind) {
-            $this->channel->queue_bind($this->queue, $this->exchange);
-            $this->reBind = true;
+            $this->channel->queue_bind($this->queue, $this->exchange, $this->routingKey);
+            $this->reBind = false;
         }
         $message = new AMQPMessage($messageBody, array('content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT));
-        $this->channel->basic_publish($message, $this->exchange);
+        $this->channel->basic_publish($message, $this->exchange, $this->routingKey);
 
     }
 
