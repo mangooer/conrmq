@@ -19,18 +19,18 @@ class MqConnectionManager
         $this->config = $config->get('mongooer_conrmq');
     }
 
-    public function driver(string $driver = "default"): MqConnectionInterface
+    public function channel(string $channel = "default"): MqConnectionInterface
     {
-        if (!isset($this->config["driver"][$driver])) {
-            throw new \RuntimeException("driver is not exists");
+        if (!isset($this->config["channel"][$channel])) {
+            throw new \RuntimeException("channel " . $channel . " is not exists");
         }
-        $config = $this->config["driver"][$driver];
+        $config = $this->config["channel"][$channel];
         return new MqConnection($config);
-//        if (!isset($this->connection[$driver])) {
+//        if (!isset($this->connection[$channel])) {
 //
-//            $this->connection[$driver] = new MqConnection($config);
+//            $this->connection[$channel] = new MqConnection($config);
 //        }
-//        return $this->connection[$driver];
+//        return $this->connection[$channel];
     }
 
 

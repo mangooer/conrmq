@@ -2,6 +2,8 @@
 
 namespace Mongooer\Conrmq\Contracts;
 
+use PhpAmqpLib\Message\AMQPMessage;
+
 interface MqConnectionInterface
 {
     public function setExChange(string $exChangeName): self;
@@ -10,9 +12,9 @@ interface MqConnectionInterface
 
     public function setRoutingKey(string $routingKey): self;
 
-    public function publisherArray(array $messageArray);
+    public function publisherJson(string $jsonStr);
 
-    public function publisherString(string $messageBody);
+    public function publisherMessage(AMQPMessage $message);
 
     public function listener(\Closure $callback);
 

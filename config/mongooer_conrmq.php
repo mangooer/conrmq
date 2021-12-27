@@ -1,6 +1,6 @@
 <?php
 return [
-    "driver" => [
+    "channel" => [
         "default" => [
             "host" => "mq.gagctv.com",
             "port" => "5678",

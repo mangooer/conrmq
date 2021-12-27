@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Facade;
 use Mongooer\Conrmq\Contracts\MqConnectionInterface;
 
 /**
- * @method static \Mongooer\Conrmq\Contracts\MqConnectionInterface driver(string $driver = "default")
+ * @method static \Mongooer\Conrmq\Contracts\MqConnectionInterface channel(string $channel = "default")
  *
  */
 class MongooerConMq extends Facade

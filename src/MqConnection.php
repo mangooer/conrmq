@@ -75,30 +75,18 @@ class MqConnection implements MqConnectionInterface
         return $this;
     }
 
-    public function publisherArray(array $messageArray)
+    public function publisherJson(string $jsonStr)
     {
-        $messageBody = json_encode($messageArray);
-        $this->publisherString($messageBody);
-    }
-
-    public function publisherString(string $messageBody)
-    {
-        if (!$this->channel) {
-            throw new \RuntimeException("channel not defined");
-        }
-        if (!$this->queue) {
-            throw new \RuntimeException("queue not defined");
-        }
-        if (!$this->exchange) {
-            throw new \RuntimeException("exchange not defined");
-        }
-        if ($this->reBind) {
-            $this->channel->queue_bind($this->queue, $this->exchange, $this->routingKey);
-            $this->reBind = false;
-        }
-        $message = new AMQPMessage($messageBody, array('content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT));
+        $this->beforeSendValidateAndRebind();
+        $message = new AMQPMessage($jsonStr, array('content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT));
         $this->channel->basic_publish($message, $this->exchange, $this->routingKey);
 
+    }
+
+    public function publisherMessage(AMQPMessage $message)
+    {
+        $this->beforeSendValidateAndRebind();
+        $this->channel->basic_publish($message, $this->exchange, $this->routingKey);
     }
 
     public function listener(\Closure $callback)
@@ -106,7 +94,7 @@ class MqConnection implements MqConnectionInterface
         while (true) {
             try {
                 $this->doSomeThing($callback);
-            } catch (AMQPRuntimeException | \ErrorException | \RuntimeException $e) {
+            } catch (AMQPRuntimeException|\ErrorException|\RuntimeException $e) {
                 $this->reconnect();
             }
         }
@@ -142,6 +130,23 @@ class MqConnection implements MqConnectionInterface
                 $this->connection->reconnect();
             }
         } catch (\ErrorException $e) {
+        }
+    }
+
+    private function beforeSendValidateAndRebind()
+    {
+        if (!$this->channel) {
+            throw new \RuntimeException("channel not defined");
+        }
+        if (!$this->queue) {
+            throw new \RuntimeException("queue not defined");
+        }
+        if (!$this->exchange) {
+            throw new \RuntimeException("exchange not defined");
+        }
+        if ($this->reBind) {
+            $this->channel->queue_bind($this->queue, $this->exchange, $this->routingKey);
+            $this->reBind = false;
         }
     }
 
