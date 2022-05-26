@@ -59,6 +59,7 @@ class MqConnection implements MqConnectionInterface
         try {
             if (!$this->connection->isConnected() || $this->connection->isBlocked()) {
                 $this->connection->reconnect();
+                $this->channel = $this->connection->channel();
             }
             $this->channel->exchange_declare($exchange, AMQPExchangeType::DIRECT, false, true, false);
             $this->channel->queue_declare($queue, false, true, false, false);
