@@ -50,7 +50,7 @@ class MqConnection implements MqConnectionInterface
             $config['channel_rpc_timeout'],
             $config['ssl_protocol']
         );
-        $this->channel = $this->connection->channel();
+//        $this->channel = $this->connection->channel();
     }
 
 
@@ -59,12 +59,12 @@ class MqConnection implements MqConnectionInterface
         try {
             if (!$this->connection->isConnected() || $this->connection->isBlocked()) {
                 $this->connection->reconnect();
-                $this->channel = $this->connection->channel();
+//                $this->channel = $this->connection->channel();
             }
-            $this->channel->exchange_declare($exchange, AMQPExchangeType::DIRECT, false, true, false);
-            $this->channel->queue_declare($queue, false, true, false, false);
-            $this->channel->queue_bind($queue, $exchange, $routingKey);
-            $this->channel->basic_publish($AMQPMessage, $exchange, $routingKey);
+            $this->connection->channel(1)->exchange_declare($exchange, AMQPExchangeType::DIRECT, false, true, false);
+            $this->connection->channel(1)->queue_declare($queue, false, true, false, false);
+            $this->connection->channel(1)->queue_bind($queue, $exchange, $routingKey);
+            $this->connection->channel(1)->basic_publish($AMQPMessage, $exchange, $routingKey);
             $this->reconnectTimes = 0;
         } catch (AMQPChannelClosedException|AMQPConnectionBlockedException|AMQPHeartbeatMissedException $exception) {
             $this->reconnectTimes += 1;
