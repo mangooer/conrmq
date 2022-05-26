@@ -25,6 +25,10 @@ class MqConnection implements MqConnectionInterface
 
     protected $maxReconnectTimes = 3;
     protected $reconnectTimes = 0;
+    /**
+     * @var \PhpAmqpLib\Channel\AbstractChannel|\PhpAmqpLib\Channel\AMQPChannel
+     */
+    private $channel;
 
     public function __construct(array $config)
     {
@@ -46,6 +50,7 @@ class MqConnection implements MqConnectionInterface
             $config['channel_rpc_timeout'],
             $config['ssl_protocol']
         );
+        $this->channel = $this->connection->channel();
     }
 
 
@@ -55,10 +60,10 @@ class MqConnection implements MqConnectionInterface
             if (!$this->connection->isConnected() || $this->connection->isBlocked()) {
                 $this->connection->reconnect();
             }
-            $this->connection->channel()->exchange_declare($exchange, AMQPExchangeType::DIRECT, false, true, false);
-            $this->connection->channel()->queue_declare($queue, false, true, false, false);
-            $this->connection->channel()->queue_bind($queue, $exchange, $routingKey);
-            $this->connection->channel()->basic_publish($AMQPMessage, $exchange, $routingKey);
+            $this->channel->exchange_declare($exchange, AMQPExchangeType::DIRECT, false, true, false);
+            $this->channel->queue_declare($queue, false, true, false, false);
+            $this->channel->queue_bind($queue, $exchange, $routingKey);
+            $this->channel->basic_publish($AMQPMessage, $exchange, $routingKey);
             $this->reconnectTimes = 0;
         } catch (AMQPChannelClosedException|AMQPConnectionBlockedException|AMQPHeartbeatMissedException $exception) {
             $this->reconnectTimes += 1;
