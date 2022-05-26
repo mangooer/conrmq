@@ -9,7 +9,7 @@ class MqConnectionManager
 {
     protected $config;
 
-//    protected $connection = [];
+    protected $connection = [];
 
     /**
      * 构造方法
@@ -25,12 +25,12 @@ class MqConnectionManager
             throw new \RuntimeException("channel " . $channel . " is not exists");
         }
         $config = $this->config["channel"][$channel];
-        return new MqConnection($config);
-//        if (!isset($this->connection[$channel])) {
+//        return new MqConnection($config);
+        if (!isset($this->connection[$channel])) {
 //
-//            $this->connection[$channel] = new MqConnection($config);
-//        }
-//        return $this->connection[$channel];
+            $this->connection[$channel] = new MqConnection($config);
+        }
+        return $this->connection[$channel];
     }
 
 

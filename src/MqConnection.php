@@ -4,6 +4,8 @@ namespace Mongooer\Conrmq;
 
 use Mongooer\Conrmq\Contracts\MqConnectionInterface;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Exception\AMQPChannelClosedException;
+use PhpAmqpLib\Exception\AMQPConnectionBlockedException;
 use PhpAmqpLib\Exception\AMQPRuntimeException;
 use PhpAmqpLib\Exchange\AMQPExchangeType;
 use PhpAmqpLib\Message\AMQPMessage;
@@ -11,20 +13,17 @@ use PhpAmqpLib\Message\AMQPMessage;
 class MqConnection implements MqConnectionInterface
 {
 
-    protected $exchange;
-    protected $queue;
-    protected $reBind = false;
-    protected $consumerTag = 'router';
     /**
      * @var AMQPStreamConnection
      */
     protected $connection;
-
-    protected $channel;
     /**
      * @var string
      */
-    protected $routingKey = "";
+    protected $channelList = [];
+
+    protected $maxReconnectTimes = 3;
+    protected $reconnectTimes = 0;
 
     public function __construct(array $config)
     {
@@ -46,108 +45,35 @@ class MqConnection implements MqConnectionInterface
             $config['channel_rpc_timeout'],
             $config['ssl_protocol']
         );
-        $this->channel = $this->connection->channel();
     }
 
-    public function setExChange(string $exChangeName): MqConnectionInterface
-    {
-        $this->channel->exchange_declare($exChangeName, AMQPExchangeType::DIRECT, false, true, false);
-        if ($this->exchange != $exChangeName) {
-            $this->reBind = true;
-        }
-        $this->exchange = $exChangeName;
-        return $this;
-    }
 
-    public function setRoutingKey(string $routingKey): MqConnectionInterface
-    {
-        $this->routingKey = $routingKey;
-        return $this;
-    }
-
-    public function setQueue(string $queueName): MqConnectionInterface
-    {
-        $this->channel->queue_declare($queueName, false, true, false, false);
-        if ($this->queue != $queueName) {
-            $this->reBind = true;
-        }
-        $this->queue = $queueName;
-        return $this;
-    }
-
-    public function publisherJson(string $jsonStr)
-    {
-        $this->beforeSendValidateAndRebind();
-        $message = new AMQPMessage($jsonStr, array('content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT));
-        $this->channel->basic_publish($message, $this->exchange, $this->routingKey);
-
-    }
-
-    public function publisherMessage(AMQPMessage $message)
-    {
-        $this->beforeSendValidateAndRebind();
-        $this->channel->basic_publish($message, $this->exchange, $this->routingKey);
-    }
-
-    public function listener(\Closure $callback)
-    {
-        while (true) {
-            try {
-                $this->doSomeThing($callback);
-            } catch (AMQPRuntimeException|\ErrorException|\RuntimeException $e) {
-                $this->reconnect();
-            }
-        }
-    }
-
-    private function doSomeThing(\Closure $callback)
-    {
-        $this->channel->basic_qos(null, 10, null);
-        //无论如何都会确认，所以异常需要捕获并且记录日志
-        $processMessage = function (AMQPMessage $message) use ($callback) {
-            try {
-                call_user_func($callback, $message);
-                //测试时不释放
-                $message->ack();
-            } catch (\Throwable $e) {
-                $message->ack();
-            }
-            // Send a message with the string "quit" to cancel the consumer.
-            if ($message->body === 'quit') {
-                $message->getChannel()->basic_cancel($message->getConsumerTag());
-            }
-        };
-        $this->channel->basic_consume($this->queue, $this->consumerTag, false, false, false, false, $processMessage);
-        while ($this->channel->is_consuming()) {
-            $this->channel->wait();
-        }
-    }
-
-    public function reconnect()
+    public function sendMessage(string $exchange, string $queue, string $routingKey, AMQPMessage $AMQPMessage)
     {
         try {
-            if ($this->connection !== null) {
+            if (!$this->connection->isConnected() || $this->connection->isBlocked()) {
                 $this->connection->reconnect();
             }
-        } catch (\ErrorException $e) {
+            $this->connection->channel()->exchange_declare($exchange, AMQPExchangeType::DIRECT, false, true, false);
+            $this->connection->channel()->queue_declare($queue, false, true, false, false);
+            $this->connection->channel()->queue_bind($queue, $exchange, $routingKey);
+            $this->connection->channel()->basic_publish($AMQPMessage, $exchange, $routingKey);
+            $this->reconnectTimes = 0;
+        } catch (AMQPChannelClosedException|AMQPConnectionBlockedException $exception) {
+            $this->reconnectTimes += 1;
+            if ($this->reconnectTimes <= $this->maxReconnectTimes) {
+                $this->sendMessage($exchange, $queue, $routingKey, $AMQPMessage);
+            } else {
+                throw $exception;
+            }
         }
+
     }
 
-    private function beforeSendValidateAndRebind()
+    public function sendJson(string $exchange, string $queue, string $routingKey, string $jsonStr)
     {
-        if (!$this->channel) {
-            throw new \RuntimeException("channel not defined");
-        }
-        if (!$this->queue) {
-            throw new \RuntimeException("queue not defined");
-        }
-        if (!$this->exchange) {
-            throw new \RuntimeException("exchange not defined");
-        }
-        if ($this->reBind) {
-            $this->channel->queue_bind($this->queue, $this->exchange, $this->routingKey);
-            $this->reBind = false;
-        }
+        $message = new AMQPMessage($jsonStr, array('content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT));
+        $this->sendMessage($exchange, $queue, $routingKey, $message);
     }
 
 
