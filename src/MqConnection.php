@@ -6,6 +6,7 @@ use Mongooer\Conrmq\Contracts\MqConnectionInterface;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Exception\AMQPChannelClosedException;
 use PhpAmqpLib\Exception\AMQPConnectionBlockedException;
+use PhpAmqpLib\Exception\AMQPHeartbeatMissedException;
 use PhpAmqpLib\Exception\AMQPRuntimeException;
 use PhpAmqpLib\Exchange\AMQPExchangeType;
 use PhpAmqpLib\Message\AMQPMessage;
@@ -59,7 +60,7 @@ class MqConnection implements MqConnectionInterface
             $this->connection->channel()->queue_bind($queue, $exchange, $routingKey);
             $this->connection->channel()->basic_publish($AMQPMessage, $exchange, $routingKey);
             $this->reconnectTimes = 0;
-        } catch (AMQPChannelClosedException|AMQPConnectionBlockedException $exception) {
+        } catch (AMQPChannelClosedException|AMQPConnectionBlockedException|AMQPHeartbeatMissedException $exception) {
             $this->reconnectTimes += 1;
             if ($this->reconnectTimes <= $this->maxReconnectTimes) {
                 $this->sendMessage($exchange, $queue, $routingKey, $AMQPMessage);
